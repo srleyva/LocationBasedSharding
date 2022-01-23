@@ -83,6 +83,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7fc7aa29613bd6a620df431842069224d8bc9011086b1db4c0e0cd47fa03ec9a"
 
 [[package]]
+name = "location_based_sharding"
+version = "0.1.0"
+dependencies = [
+ "rand 0.4.6",
+ "s2",
+ "serde",
+ "serde_derive",
+ "serde_json",
+]
+
+[[package]]
 name = "num-bigint"
 version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -252,17 +263,6 @@ name = "unicode-xid"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ccb82d61f80a663efe1f787a51b16b5a51e3314d6ac365b08639f52387b33f3"
-
-[[package]]
-name = "user_base_sharding"
-version = "0.1.0"
-dependencies = [
- "rand 0.4.6",
- "s2",
- "serde",
- "serde_derive",
- "serde_json",
-]
 
 [[package]]
 name = "winapi"
