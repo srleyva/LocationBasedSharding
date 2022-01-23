@@ -182,8 +182,7 @@ impl GeoShardCollection {
 
 pub fn cell_id_from_long_lat(long: f64, lat: f64, storage_level: u64) -> CellID {
     let long_lat = ll!(long, lat);
-    let cell_id = CellID::from(long_lat).parent(storage_level);
-    cell_id
+    CellID::from(long_lat).parent(storage_level)
 }
 
 pub fn cell_ids_from_radius(long: f64, lat: f64, storage_level: u64, radius: u32) -> Vec<CellID> {
@@ -223,7 +222,7 @@ impl GeoShardSearcher {
             let cell_id_start = CellID::from_token(geoshard.start.as_ref().unwrap().as_str());
             let cell_id_end = CellID::from_token(geoshard.end.as_ref().unwrap().as_str());
             if cell_id >= cell_id_start && cell_id <= cell_id_end {
-                return &geoshard;
+                return geoshard;
             }
         }
         self.shards.inner.last().unwrap()
@@ -336,41 +335,41 @@ mod test {
 
             // Ocean
             for _ in 0..=1000 {
-                let rand_lat = rng.gen_range(0.000000, 2000.000000);
-                let rand_long = rng.gen_range(0.000000, 2000.000000);
+                let rand_lat = rng.gen_range(0.000000..2000.000000);
+                let rand_long = rng.gen_range(0.000000..2000.000000);
 
                 let cell_id = CellID::from(ll!(rand_lat, rand_long));
-                let rand_load_count = rng.gen_range(0, 5);
+                let rand_load_count = rng.gen_range(0..5);
                 mock_values.insert(cell_id, rand_load_count);
             }
 
             // Small Cities
             for _ in 0..=100 {
-                let rand_lat = rng.gen_range(0.000000, 2000.000000);
-                let rand_long = rng.gen_range(0.000000, 2000.000000);
+                let rand_lat = rng.gen_range(0.000000..2000.000000);
+                let rand_long = rng.gen_range(0.000000..2000.000000);
 
                 let cell_id = CellID::from(ll!(rand_lat, rand_long));
-                let rand_load_count = rng.gen_range(10, 100);
+                let rand_load_count = rng.gen_range(10..100);
                 mock_values.insert(cell_id, rand_load_count);
             }
 
             // Medium Cities
             for _ in 0..=50 {
-                let rand_lat = rng.gen_range(0.000000, 2000.000000);
-                let rand_long = rng.gen_range(0.000000, 2000.000000);
+                let rand_lat = rng.gen_range(0.000000..2000.000000);
+                let rand_long = rng.gen_range(0.000000..2000.000000);
 
                 let cell_id = CellID::from(ll!(rand_lat, rand_long));
-                let rand_load_count = rng.gen_range(100, 500);
+                let rand_load_count = rng.gen_range(100..500);
                 mock_values.insert(cell_id, rand_load_count);
             }
 
             // Big Cities
             for _ in 0..=10 {
-                let rand_lat = rng.gen_range(0.000000, 2000.000000);
-                let rand_long = rng.gen_range(0.000000, 2000.000000);
+                let rand_lat = rng.gen_range(0.000000..2000.000000);
+                let rand_long = rng.gen_range(0.000000..2000.000000);
 
                 let cell_id = CellID::from(ll!(rand_lat, rand_long));
-                let rand_load_count = rng.gen_range(1000, 2000);
+                let rand_load_count = rng.gen_range(1000..2000);
                 mock_values.insert(cell_id, rand_load_count);
             }
 
