@@ -1,0 +1,15 @@
+[package]
+name = "user_base_sharding"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+s2 = "0.0"
+serde_json = "~1"
+serde = "1.0"
+serde_derive = "^1.0.8"
+
+[dev_dependencies]
+rand = "*"
