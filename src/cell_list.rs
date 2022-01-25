@@ -1,13 +1,22 @@
-use std::{collections::BTreeMap, thread::Builder};
+#![deny(missing_docs)]
+//! cell_list contains code directly related to CellList
+//! This includes scoring and creation
+use std::collections::BTreeMap;
 
 use s2::cellid::CellID;
 
 use crate::{users::UserCollection, utils::ll};
 
+/// CellScorer is the trait for a given scorer, implementing
+/// this will allow you to give a custom heuristic for scoring cells
+/// such as active users, total users, or some other count
 pub trait CellScorer {
+    /// Given a `cell_list` and collection of `users` this will score the cells
     fn score_cell_list(&self, cell_list: CellList, users: UserCollection) -> CellList;
 }
 
+/// UserCountScorer is the a default like provided UserCountScorer
+/// It scores purely on user count
 pub struct UserCountScorer;
 
 impl CellScorer for UserCountScorer {
