@@ -1,5 +1,8 @@
 # Location Based Sharding Algorithm
 
+[Docs.rs](https://docs.rs/location_based_sharding/latest/location_based_sharding/index.html)
+
+
 Based off [Tinder own location based sharding algorithm](https://medium.com/tinder-engineering/geosharded-recommendations-part-1-sharding-approach-d5d54e0ec77a), the algorithm will create shards based off of the "heat" of users in a particular location. This flexible sharding schema allows less dense locations to be encompassed in less shards and more densely populated areas to be split in to different shards.
 
 # Sharding metadata
