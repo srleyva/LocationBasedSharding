@@ -150,7 +150,7 @@ impl GeoshardBuilder<UserCountScorer> {
 
 /// `Geoshard` represents one shard...each shard contains a variable amount of cells
 #[derive(Debug, Serialize, Deserialize)]
-pub struct GeoShard {
+pub struct Geoshard {
     name: String,
     storage_level: u64,
     start: Option<String>,
@@ -163,7 +163,7 @@ pub struct GeoShard {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GeoshardCollection {
     #[serde(alias = "shards")]
-    inner: Vec<GeoShard>,
+    inner: Vec<Geoshard>,
 }
 
 impl TryFrom<&str> for GeoshardCollection {
@@ -180,7 +180,7 @@ impl GeoshardCollection {
     /// taking into account the limit of shards allowed in the system
     pub fn new(container_size: i32, scored_cells: &BTreeMap<CellID, i32>) -> Self {
         let first_cell = scored_cells.iter().next().unwrap();
-        let mut shard = GeoShard {
+        let mut shard = Geoshard {
             name: "geoshard_user_index_0".to_owned(),
             storage_level: first_cell.0.level(),
             start: Some(first_cell.0.to_token()),
@@ -200,7 +200,7 @@ impl GeoshardCollection {
             } else {
                 shard.end = Some(cell_id.to_token());
                 geo_shards.push(shard);
-                shard = GeoShard {
+                shard = Geoshard {
                     name: format!("geoshard_user_index_{}", geoshard_count),
                     storage_level: cell_id.level(),
                     start: None,
@@ -250,7 +250,7 @@ pub struct GeoshardSearcher {
 
 impl GeoshardSearcher {
     /// returns shard for given user
-    pub fn get_shard_for_user(&self, user: Box<dyn User>) -> &GeoShard {
+    pub fn get_shard_for_user(&self, user: Box<dyn User>) -> &Geoshard {
         let location = user.location();
         self.get_shard_from_location(location)
     }
@@ -261,12 +261,12 @@ impl GeoshardSearcher {
     }
 
     /// returns shard from given location
-    pub fn get_shard_from_location(&self, location: LatLng) -> &GeoShard {
+    pub fn get_shard_from_location(&self, location: LatLng) -> &Geoshard {
         self.get_shard_from_cell_id(self.get_cell_id_from_location(location))
     }
 
     /// returns a shard for given cell ID
-    pub fn get_shard_from_cell_id(&self, cell_id: CellID) -> &GeoShard {
+    pub fn get_shard_from_cell_id(&self, cell_id: CellID) -> &Geoshard {
         for geoshard in self.shards.inner.iter() {
             // Check if cell_id in shard
             let cell_id_start = CellID::from_token(geoshard.start.as_ref().unwrap().as_str());
@@ -279,7 +279,7 @@ impl GeoshardSearcher {
     }
 
     /// returns the given shard in a location and radius
-    pub fn get_shards_from_radius(&self, location: LatLng, radius: u32) -> Vec<&GeoShard> {
+    pub fn get_shards_from_radius(&self, location: LatLng, radius: u32) -> Vec<&Geoshard> {
         self.cell_ids_from_radius(location, radius)
             .into_iter()
             .map(|cell_id| self.get_shard_from_cell_id(cell_id))
@@ -327,7 +327,7 @@ mod test {
 
     macro_rules! shard {
         ($cell_score:expr) => {
-            GeoShard {
+            Geoshard {
                 name: "fake".to_owned(),
                 storage_level: 0,
                 start: None,
