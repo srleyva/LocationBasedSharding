@@ -5,22 +5,28 @@ use std::collections::BTreeMap;
 
 use s2::cellid::CellID;
 
-use crate::{users::UserCollection, utils::ll};
+use crate::{users::User, utils::ll};
 
 /// CellScorer is the trait for a given scorer, implementing
 /// this will allow you to give a custom heuristic for scoring cells
 /// such as active users, total users, or some other count
-pub trait CellScorer {
+pub trait CellScorer<UserCollection> {
     /// Given a `cell_list` and collection of `users` this will score the cells
-    fn score_cell_list(&self, cell_list: CellList, users: UserCollection) -> CellList;
+    fn score_cell_list<T: User>(&self, cell_list: CellList, users: UserCollection) -> CellList
+    where
+        UserCollection: Iterator<Item = T>;
 }
 
 /// UserCountScorer is the a default like provided UserCountScorer
 /// It scores purely on user count
 pub struct UserCountScorer;
 
-impl CellScorer for UserCountScorer {
-    fn score_cell_list(&self, mut cell_list: CellList, users: UserCollection) -> CellList {
+impl<UserCollection> CellScorer<UserCollection> for UserCountScorer {
+    fn score_cell_list<T>(&self, mut cell_list: CellList, users: UserCollection) -> CellList
+    where
+        UserCollection: Iterator<Item = T>,
+        T: User,
+    {
         for user in users {
             let cell_id = CellID::from(user.location()).parent(cell_list.storage_level);
             let score = cell_list.cell_list.get_mut(&cell_id).unwrap();
