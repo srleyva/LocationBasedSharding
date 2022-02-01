@@ -63,7 +63,7 @@ impl CellList {
         let mut current_stack = vec![starting_cell_id];
         while let Some(current_neighbor) = current_stack.pop() {
             if !seen.contains_key(&current_neighbor) {
-                current_stack.append(&mut current_neighbor.vertex_neighbors(storage_level));
+                current_stack.append(&mut current_neighbor.all_neighbors(storage_level));
                 seen.insert(current_neighbor, 0);
             }
         }

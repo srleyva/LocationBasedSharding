@@ -13,5 +13,5 @@ pub type UserCollection = Box<dyn Iterator<Item = Box<dyn User>>>;
 /// by S2 to find the correct cell
 pub trait User {
     /// location returns the S2 LatLng that is used to find the given cell_id
-    fn location(&self) -> LatLng;
+    fn location(&self) -> &LatLng;
 }
