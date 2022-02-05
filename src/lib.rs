@@ -23,7 +23,7 @@ mod test {
 
     #[test]
     fn test_geoshard_searcher() {
-        let users: Vec<FakeUser> = (0..20000).map(|_| FakeUser::new()).collect();
+        let users: Vec<FakeUser> = (0..2000).map(|_| FakeUser::new()).collect();
 
         let geoshards = GeoshardBuilder::user_count_scorer(8, users.iter(), 40, 100).build();
         let searcher = GeoshardSearcher::from(geoshards);
@@ -53,5 +53,34 @@ mod test {
         shard_file
             .write_all(&json_shards.as_bytes())
             .expect("could not write json shards");
+    }
+
+    #[test]
+    fn test_geoshard_properties() {
+        let users: Vec<FakeUser> = (0..2000).map(|_| FakeUser::new()).collect();
+
+        let geoshards = GeoshardBuilder::user_count_scorer(8, users.iter(), 40, 100).build();
+
+        for geoshard in geoshards.shards().iter() {
+            assert_eq!(geoshard.cells().len() as i32, geoshard.cell_count());
+            assert_eq!(
+                geoshard.cells().first().unwrap(),
+                geoshard.start().as_ref().unwrap()
+            );
+
+            assert_eq!(
+                geoshard.cells().last().unwrap(),
+                geoshard.end().as_ref().unwrap()
+            );
+        }
+
+        assert_eq!(
+            geoshards
+                .shards()
+                .iter()
+                .map(|shard| shard.cell_count())
+                .sum::<i32>(),
+            393217
+        );
     }
 }

@@ -19,7 +19,7 @@
 //! // let shard_user_is_in = shard_searcher.get_shard_user(some_user);
 //! ```
 
-use std::{collections::BTreeMap, sync::Arc};
+use std::collections::BTreeMap;
 
 use s2::{cap::Cap, cellid::CellID, latlng::LatLng, point::Point, region::RegionCoverer, s1};
 use serde_derive::{Deserialize, Serialize};
@@ -171,12 +171,33 @@ pub struct Geoshard {
     end: Option<String>,
     cell_count: i32,
     cell_score: i32,
+    cells: Vec<String>,
 }
 
 impl Geoshard {
     /// name returns the name of the shard
     pub fn name(&self) -> &str {
         &self.name
+    }
+
+    /// cells returns the cells in this geoshard
+    pub fn cells(&self) -> &Vec<String> {
+        &self.cells
+    }
+
+    /// cell_count returns the cell_count for this geoshard
+    pub fn cell_count(&self) -> i32 {
+        self.cell_count
+    }
+
+    /// returns the starting cell
+    pub fn start(&self) -> &Option<String> {
+        &self.start
+    }
+
+    /// returns the end cell
+    pub fn end(&self) -> &Option<String> {
+        &self.end
     }
 }
 
@@ -214,35 +235,34 @@ impl GeoshardCollection {
             end: None,
             cell_count: 0,
             cell_score: 0,
+            cells: vec![],
         };
         let mut shards = Vec::new();
         let mut geoshard_count = 1;
         for (cell_id, cell_score) in scored_cells {
             if shard.start == None {
                 shard.start = Some(cell_id.to_token());
-            }
-            if shard.cell_score + cell_score < container_size {
-                shard.cell_score += cell_score;
-                shard.cell_count += 1;
-            } else {
-                shard.end = Some(cell_id.to_token());
+            } else if shard.cell_score + cell_score > container_size {
+                shard.end = Some(shard.cells.last().unwrap().clone());
                 shards.push(shard);
                 shard = Geoshard {
                     name: format!("geoshard_user_index_{}", geoshard_count),
                     storage_level: cell_id.level(),
-                    start: None,
+                    start: Some(cell_id.to_token()),
                     end: None,
                     cell_count: 0,
-                    cell_score: *cell_score,
+                    cell_score: 0,
+                    cells: vec![],
                 };
                 geoshard_count += 1;
             }
+            shard.cells.push(cell_id.to_token());
+            shard.cell_score += cell_score;
+            shard.cell_count += 1;
         }
         if shard.cell_count != 0 {
             let last = scored_cells.iter().last().unwrap();
-            shard.start = Some(last.0.to_token());
             shard.end = Some(last.0.to_token());
-            shard.cell_count += 1;
             shards.push(shard);
         }
 
@@ -528,6 +548,7 @@ pub mod test {
                 end: None,
                 cell_count: 0,
                 cell_score: $cell_score,
+                cells: vec![],
             }
         };
     }
@@ -548,8 +569,6 @@ pub mod test {
         let cell_id_end = CellID::from_token(geoshard.end.as_ref().unwrap().as_str());
 
         let range = cell_id_start..=cell_id_end;
-        println!("Geoshard Range: {}-{}", cell_id_start, cell_id_end);
-        println!("Geoshard cell: {}", cell_id);
         assert!(range.contains(&cell_id));
     }
 
