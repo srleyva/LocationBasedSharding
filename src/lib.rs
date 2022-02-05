@@ -48,11 +48,12 @@ mod test {
 
         let shards = searcher.shards();
 
-        let json_shards = serde_json::to_string(shards).unwrap();
-        let mut shard_file = File::create("shard.json").expect("could not create shard file");
-        shard_file
-            .write_all(&json_shards.as_bytes())
-            .expect("could not write json shards");
+        // TODO: Implement serde serialze and deserialze
+        // let json_shards = serde_json::to_string(shards).unwrap();
+        // let mut shard_file = File::create("shard.json").expect("could not create shard file");
+        // shard_file
+        //     .write_all(&json_shards.as_bytes())
+        //     .expect("could not write json shards");
     }
 
     #[test]
@@ -62,16 +63,10 @@ mod test {
         let geoshards = GeoshardBuilder::user_count_scorer(8, users.iter(), 40, 100).build();
 
         for geoshard in geoshards.shards().iter() {
-            assert_eq!(geoshard.cells().len() as i32, geoshard.cell_count());
-            assert_eq!(
-                geoshard.cells().first().unwrap(),
-                geoshard.start().as_ref().unwrap()
-            );
+            assert_eq!(geoshard.cells().len(), geoshard.cell_count());
+            assert_eq!(geoshard.cells().first().unwrap(), geoshard.start());
 
-            assert_eq!(
-                geoshard.cells().last().unwrap(),
-                geoshard.end().as_ref().unwrap()
-            );
+            assert_eq!(geoshard.cells().last().unwrap(), geoshard.end());
         }
 
         assert_eq!(
@@ -79,7 +74,7 @@ mod test {
                 .shards()
                 .iter()
                 .map(|shard| shard.cell_count())
-                .sum::<i32>(),
+                .sum::<usize>(),
             393217
         );
     }
