@@ -14,3 +14,44 @@ pub mod utils {
 
     pub(crate) use ll;
 }
+
+#[cfg(test)]
+mod test {
+    use std::{collections::HashMap, fs::File, io::Write};
+
+    use crate::geoshard::{test::FakeUser, GeoshardBuilder, GeoshardSearcher};
+
+    #[test]
+    fn test_geoshard_searcher() {
+        let users: Vec<FakeUser> = (0..20000).map(|_| FakeUser::new()).collect();
+
+        let geoshards = GeoshardBuilder::user_count_scorer(8, users.iter(), 40, 100).build();
+        let searcher = GeoshardSearcher::from(geoshards);
+
+        let user_database = users.iter().fold(HashMap::new(), |mut database, user| {
+            let cell_id = searcher.get_shard_for_user(user);
+            database
+                .entry(cell_id.name())
+                .or_insert(Vec::new())
+                .push(user.clone());
+            database
+        });
+
+        for user in users.iter() {
+            let cell_id = searcher.get_shard_for_user(user);
+            let shard_collection = user_database
+                .get(cell_id.name())
+                .expect("cell_id not found in database");
+
+            assert!(shard_collection.contains(user));
+        }
+
+        let shards = searcher.shards();
+
+        let json_shards = serde_json::to_string(shards).unwrap();
+        let mut shard_file = File::create("shard.json").expect("could not create shard file");
+        shard_file
+            .write_all(&json_shards.as_bytes())
+            .expect("could not write json shards");
+    }
+}
