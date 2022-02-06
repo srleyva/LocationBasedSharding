@@ -25,7 +25,11 @@ use s2::{
     cap::Cap, cellid::CellID, cellunion::CellUnion, latlng::LatLng, point::Point,
     region::RegionCoverer, s1,
 };
-use serde::{ser::SerializeStruct, Deserialize, Serialize};
+use serde::{
+    de::{MapAccess, Visitor},
+    ser::SerializeStruct,
+    Deserialize, Serialize,
+};
 use serde_derive::{Deserialize, Serialize};
 
 use crate::{
@@ -183,12 +187,13 @@ impl Serialize for Geoshard {
     where
         S: serde::Serializer,
     {
-        let mut state = serializer.serialize_struct("Geoshard", 5)?;
+        let mut state = serializer.serialize_struct("Geoshard", 6)?;
         state.serialize_field("name", &self.name)?;
         state.serialize_field("storage_level", &self.storage_level)?;
         state.serialize_field("start", &self.start.to_token())?;
         state.serialize_field("end", &self.end.to_token())?;
         state.serialize_field("cell_score", &self.cell_score)?;
+        state.serialize_field("size", &self.size)?;
         state.end()
     }
 }
@@ -198,7 +203,163 @@ impl<'de> Deserialize<'de> for Geoshard {
     where
         D: serde::Deserializer<'de>,
     {
-        todo!()
+        enum Field {
+            Name,
+            StorageLevel,
+            Start,
+            End,
+            CellScore,
+            Size,
+        }
+
+        impl<'de> Deserialize<'de> for Field {
+            fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+            where
+                D: serde::Deserializer<'de>,
+            {
+                struct FieldVisitor;
+
+                impl<'de> Visitor<'de> for FieldVisitor {
+                    type Value = Field;
+
+                    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                        formatter.write_str(
+                            "`name` or `storage_level` or `start` or `end` or `cell_score` or `size`",
+                        )
+                    }
+
+                    fn visit_str<E>(self, value: &str) -> Result<Field, E>
+                    where
+                        E: serde::de::Error,
+                    {
+                        match value {
+                            "name" => Ok(Field::Name),
+                            "storage_level" => Ok(Field::StorageLevel),
+                            "start" => Ok(Field::Start),
+                            "end" => Ok(Field::End),
+                            "cell_score" => Ok(Field::CellScore),
+                            "size" => Ok(Field::Size),
+                            _ => Err(serde::de::Error::unknown_field(value, FIELDS)),
+                        }
+                    }
+                }
+                deserializer.deserialize_identifier(FieldVisitor)
+            }
+        }
+
+        struct GeoshardVisitor;
+        impl<'de> Visitor<'de> for GeoshardVisitor {
+            type Value = Geoshard;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("struct Geoshard")
+            }
+
+            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+            where
+                A: serde::de::SeqAccess<'de>,
+            {
+                let name = seq
+                    .next_element()?
+                    .ok_or_else(|| serde::de::Error::invalid_length(0, &self))?;
+                let storage_level = seq
+                    .next_element()?
+                    .ok_or_else(|| serde::de::Error::invalid_length(1, &self))?;
+                let start = seq
+                    .next_element()?
+                    .ok_or_else(|| serde::de::Error::invalid_length(2, &self))?;
+                let end = seq
+                    .next_element()?
+                    .ok_or_else(|| serde::de::Error::invalid_length(3, &self))?;
+                let cell_score = seq
+                    .next_element()?
+                    .ok_or_else(|| serde::de::Error::invalid_length(4, &self))?;
+                let size = seq
+                    .next_element()?
+                    .ok_or_else(|| serde::de::Error::invalid_length(5, &self))?;
+
+                Ok(Geoshard::new(
+                    name,
+                    CellID::from_token(start),
+                    CellID::from_token(end),
+                    cell_score,
+                    storage_level,
+                    size,
+                ))
+            }
+
+            fn visit_map<V>(self, mut map: V) -> Result<Self::Value, V::Error>
+            where
+                V: MapAccess<'de>,
+            {
+                let mut name = None;
+                let mut storage_level = None;
+                let mut start = None;
+                let mut end = None;
+                let mut cell_score = None;
+                let mut size = None;
+                while let Some(key) = map.next_key()? {
+                    match key {
+                        Field::Name => {
+                            if name.is_some() {
+                                return Err(serde::de::Error::duplicate_field("name"));
+                            }
+                            name = Some(map.next_value()?);
+                        }
+                        Field::StorageLevel => {
+                            if storage_level.is_some() {
+                                return Err(serde::de::Error::duplicate_field("storage_level"));
+                            }
+                            storage_level = Some(map.next_value()?);
+                        }
+                        Field::Start => {
+                            if start.is_some() {
+                                return Err(serde::de::Error::duplicate_field("start"));
+                            }
+                            start = Some(CellID::from_token(map.next_value()?));
+                        }
+                        Field::End => {
+                            if end.is_some() {
+                                return Err(serde::de::Error::duplicate_field("end"));
+                            }
+                            end = Some(CellID::from_token(map.next_value()?));
+                        }
+                        Field::CellScore => {
+                            if cell_score.is_some() {
+                                return Err(serde::de::Error::duplicate_field("cell_score"));
+                            }
+                            cell_score = Some(map.next_value()?);
+                        }
+                        Field::Size => {
+                            if size.is_some() {
+                                return Err(serde::de::Error::duplicate_field("size"));
+                            }
+                            size = Some(map.next_value()?);
+                        }
+                    }
+                }
+                let name = name.ok_or_else(|| serde::de::Error::missing_field("name"))?;
+                let start = start.ok_or_else(|| serde::de::Error::missing_field("start"))?;
+                let end = end.ok_or_else(|| serde::de::Error::missing_field("end"))?;
+                let cell_score =
+                    cell_score.ok_or_else(|| serde::de::Error::missing_field("cell_score"))?;
+                let storage_level = storage_level
+                    .ok_or_else(|| serde::de::Error::missing_field("storage_level"))?;
+                let size = size.ok_or_else(|| serde::de::Error::missing_field("size"))?;
+                Ok(Geoshard::new(
+                    name,
+                    start,
+                    end,
+                    cell_score,
+                    storage_level,
+                    size,
+                ))
+            }
+        }
+
+        const FIELDS: &'static [&'static str] =
+            &["name", "storage_level", "start", "end", "cell_score"];
+        deserializer.deserialize_struct("Geoshard", FIELDS, GeoshardVisitor)
     }
 }
 
@@ -256,7 +417,7 @@ impl Geoshard {
 }
 
 /// `GeoshardCollection` is the collection of shards generated by by the builder
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct GeoshardCollection {
     storage_level: u64,
     shards: Vec<Geoshard>,
@@ -266,6 +427,11 @@ impl GeoshardCollection {
     /// returns shards in this collection
     pub fn shards(&self) -> &Vec<Geoshard> {
         &self.shards
+    }
+
+    /// storage level of this cell collection
+    pub fn storage_level(&self) -> u64 {
+        self.storage_level
     }
 }
 

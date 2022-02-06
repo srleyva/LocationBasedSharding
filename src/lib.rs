@@ -19,7 +19,7 @@ pub mod utils {
 mod test {
     use std::{collections::HashMap, fs::File, io::Write};
 
-    use crate::geoshard::{test::FakeUser, GeoshardBuilder, GeoshardSearcher};
+    use crate::geoshard::{test::FakeUser, GeoshardBuilder, GeoshardCollection, GeoshardSearcher};
 
     #[test]
     fn test_geoshard_searcher() {
@@ -48,12 +48,15 @@ mod test {
 
         let shards = searcher.shards();
 
-        // TODO: Implement serde serialze and deserialze
-        // let json_shards = serde_json::to_string(shards).unwrap();
-        // let mut shard_file = File::create("shard.json").expect("could not create shard file");
-        // shard_file
-        //     .write_all(&json_shards.as_bytes())
-        //     .expect("could not write json shards");
+        let json_shards = serde_json::to_string(shards).unwrap();
+        let mut shard_file = File::create("shard.json").expect("could not create shard file");
+        shard_file
+            .write_all(&json_shards.as_bytes())
+            .expect("could not write json shards");
+
+        let parsed_shards: GeoshardCollection = serde_json::from_str(&json_shards).unwrap();
+        assert_eq!(parsed_shards.shards().len(), shards.shards().len());
+        assert_eq!(parsed_shards.storage_level(), shards.storage_level());
     }
 
     #[test]
