@@ -62,13 +62,6 @@ mod test {
 
         let geoshards = GeoshardBuilder::user_count_scorer(8, users.iter(), 40, 100).build();
 
-        for geoshard in geoshards.shards().iter() {
-            assert_eq!(geoshard.cells().len(), geoshard.cell_count());
-            assert_eq!(geoshard.cells().first().unwrap(), geoshard.start());
-
-            assert_eq!(geoshard.cells().last().unwrap(), geoshard.end());
-        }
-
         assert_eq!(
             geoshards
                 .shards()

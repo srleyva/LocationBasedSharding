@@ -19,15 +19,13 @@
 //! // let shard_user_is_in = shard_searcher.get_shard_user(some_user);
 //! ```
 
-use std::{
-    collections::{BTreeMap, HashMap},
-    sync::Once,
-};
+use std::collections::BTreeMap;
 
 use s2::{
-    cap::Cap, cell::Cell, cellid::CellID, cellunion::CellUnion, latlng::LatLng, point::Point,
+    cap::Cap, cellid::CellID, cellunion::CellUnion, latlng::LatLng, point::Point,
     region::RegionCoverer, s1,
 };
+use serde::{ser::SerializeStruct, Deserialize, Serialize};
 use serde_derive::{Deserialize, Serialize};
 
 use crate::{
@@ -176,24 +174,51 @@ pub struct Geoshard {
     start: CellID,
     end: CellID,
     cell_score: i32,
-    cells: Vec<CellID>,
-
     cell_union: CellUnion,
+    size: usize,
+}
+
+impl Serialize for Geoshard {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut state = serializer.serialize_struct("Geoshard", 5)?;
+        state.serialize_field("name", &self.name)?;
+        state.serialize_field("storage_level", &self.storage_level)?;
+        state.serialize_field("start", &self.start.to_token())?;
+        state.serialize_field("end", &self.end.to_token())?;
+        state.serialize_field("cell_score", &self.cell_score)?;
+        state.end()
+    }
+}
+
+impl<'de> Deserialize<'de> for Geoshard {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        todo!()
+    }
 }
 
 impl Geoshard {
     /// returns a new geoshard
-    pub fn new(name: String, cells: Vec<CellID>, cell_score: i32, storage_level: u64) -> Self {
-        let start = cells[0];
-        let end = cells[cells.len() - 1];
-
+    pub fn new(
+        name: String,
+        start: CellID,
+        end: CellID,
+        cell_score: i32,
+        storage_level: u64,
+        size: usize,
+    ) -> Self {
         let cell_union = CellUnion::from_range(start, end);
         Self {
+            size,
             start,
             end,
             name,
             storage_level,
-            cells,
             cell_score,
             cell_union,
         }
@@ -204,14 +229,9 @@ impl Geoshard {
         &self.name
     }
 
-    /// cells returns the cells in this geoshard
-    pub fn cells(&self) -> &Vec<CellID> {
-        &self.cells
-    }
-
     /// cell_count returns the cell_count for this geoshard
     pub fn cell_count(&self) -> usize {
-        self.cells.len()
+        self.size
     }
 
     /// returns the starting cell
@@ -227,6 +247,11 @@ impl Geoshard {
     /// Returns a cell union from this shard
     pub fn cell_union(&self) -> &CellUnion {
         &self.cell_union
+    }
+
+    /// returns the stroage level of the cells in this shard
+    pub fn storage_level(&self) -> u64 {
+        self.storage_level
     }
 }
 
@@ -261,33 +286,43 @@ impl GeoshardCollection {
         scored_cells: &BTreeMap<CellID, i32>,
         storage_level: u64,
     ) -> Self {
-        let mut cells = vec![];
+        let mut current_start = scored_cells.iter().next().unwrap().0;
+        let mut current_end = scored_cells.iter().next().unwrap().0;
+        let mut current_cell_count = 0;
         let mut current_score = 0;
+
         let mut shards = Vec::new();
         let mut geoshard_count = 1;
+
         for (cell_id, cell_score) in scored_cells {
             if cell_score + current_score > container_size {
                 let shard = Geoshard::new(
                     format!("geoshard_user_index_{}", geoshard_count),
-                    cells,
+                    *current_start,
+                    *current_end,
                     current_score,
                     cell_id.level(),
+                    current_cell_count,
                 );
                 shards.push(shard);
-                cells = vec![];
+                current_start = cell_id;
+                current_cell_count = 0;
                 current_score = 0;
                 geoshard_count += 1;
             }
-            cells.push(*cell_id);
+            current_end = cell_id;
+            current_cell_count += 1;
             current_score += cell_score;
         }
-        if cells.len() != 0 {
-            let level = cells[0].level();
+
+        if geoshard_count != shards.len() {
             let shard = Geoshard::new(
                 format!("geoshard_user_index_{}", geoshard_count),
-                cells,
+                *current_start,
+                *current_end,
                 current_score,
-                level,
+                storage_level,
+                current_cell_count,
             );
 
             shards.push(shard);
@@ -570,10 +605,12 @@ pub mod test {
         ($cell_score:expr) => {
             Geoshard::new(
                 "fake-shard".to_owned(),
-                vec![CellID::from_token("00001")],
+                CellID::from_token("00001"),
+                CellID::from_token("00003"),
                 $cell_score,
                 0,
-            );
+                2,
+            )
         };
     }
 
