@@ -71,7 +71,7 @@ mod test {
                 .iter()
                 .map(|shard| shard.cell_count())
                 .sum::<usize>(),
-            393217
+            393216
         );
     }
 }

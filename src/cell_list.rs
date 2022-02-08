@@ -47,7 +47,7 @@ impl CellList {
     /// Generates a Collection of cells based off of the given storage level
     pub fn new(storage_level: u64) -> Self {
         let starting_cell_id = CellID::from(ll!(0.00000000, 0.00000000));
-        let cell_list = Self::gather_cells(storage_level, starting_cell_id);
+        let cell_list = Self::gather_cells(storage_level, starting_cell_id.parent(storage_level));
         Self {
             storage_level,
             cell_list,
@@ -84,6 +84,6 @@ mod test {
     #[test]
     fn test_geoshard_cell_list() {
         let cell_list = CellList::new(8).cell_list;
-        assert_eq!(cell_list.len(), 393217);
+        assert_eq!(cell_list.len(), 393216);
     }
 }
