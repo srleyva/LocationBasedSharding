@@ -1,9 +1,7 @@
 FROM jupyter/scipy-notebook
 
-USER root
+RUN pip install s2sphere s2
 
-RUN pip install s2sphere
-
-RUN conda install matplotlib shapely cartopy plotly
+RUN conda install matplotlib shapely cartopy plotly folium
 
 COPY shard.json /tmp/shard.json
