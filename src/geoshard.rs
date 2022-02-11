@@ -175,11 +175,8 @@ impl<UserCollection> GeoshardBuilder<UserCountScorer, UserCollection> {
 pub struct Geoshard {
     name: String,
     storage_level: u64,
-    start: CellID,
-    end: CellID,
     cell_score: i32,
     cell_union: CellUnion,
-    size: usize,
 }
 
 impl Serialize for Geoshard {
@@ -190,10 +187,16 @@ impl Serialize for Geoshard {
         let mut state = serializer.serialize_struct("Geoshard", 6)?;
         state.serialize_field("name", &self.name)?;
         state.serialize_field("storage_level", &self.storage_level)?;
-        state.serialize_field("start", &self.start.to_token())?;
-        state.serialize_field("end", &self.end.to_token())?;
+        state.serialize_field(
+            "cells",
+            &self
+                .cell_union
+                .0
+                .iter()
+                .map(|cell_id| cell_id.to_token())
+                .collect::<Vec<String>>(),
+        )?;
         state.serialize_field("cell_score", &self.cell_score)?;
-        state.serialize_field("size", &self.size)?;
         state.end()
     }
 }
@@ -206,10 +209,8 @@ impl<'de> Deserialize<'de> for Geoshard {
         enum Field {
             Name,
             StorageLevel,
-            Start,
-            End,
+            Cells,
             CellScore,
-            Size,
         }
 
         impl<'de> Deserialize<'de> for Field {
@@ -223,9 +224,7 @@ impl<'de> Deserialize<'de> for Geoshard {
                     type Value = Field;
 
                     fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                        formatter.write_str(
-                            "`name` or `storage_level` or `start` or `end` or `cell_score` or `size`",
-                        )
+                        formatter.write_str("`name` or `storage_level` or `cells` or `cell_score`")
                     }
 
                     fn visit_str<E>(self, value: &str) -> Result<Field, E>
@@ -235,10 +234,8 @@ impl<'de> Deserialize<'de> for Geoshard {
                         match value {
                             "name" => Ok(Field::Name),
                             "storage_level" => Ok(Field::StorageLevel),
-                            "start" => Ok(Field::Start),
-                            "end" => Ok(Field::End),
+                            "cells" => Ok(Field::Cells),
                             "cell_score" => Ok(Field::CellScore),
-                            "size" => Ok(Field::Size),
                             _ => Err(serde::de::Error::unknown_field(value, FIELDS)),
                         }
                     }
@@ -265,26 +262,23 @@ impl<'de> Deserialize<'de> for Geoshard {
                 let storage_level = seq
                     .next_element()?
                     .ok_or_else(|| serde::de::Error::invalid_length(1, &self))?;
-                let start = seq
+                let cells: Vec<String> = seq
                     .next_element()?
                     .ok_or_else(|| serde::de::Error::invalid_length(2, &self))?;
-                let end = seq
-                    .next_element()?
-                    .ok_or_else(|| serde::de::Error::invalid_length(3, &self))?;
                 let cell_score = seq
                     .next_element()?
                     .ok_or_else(|| serde::de::Error::invalid_length(4, &self))?;
-                let size = seq
-                    .next_element()?
-                    .ok_or_else(|| serde::de::Error::invalid_length(5, &self))?;
 
                 Ok(Geoshard::new(
                     name,
-                    CellID::from_token(start),
-                    CellID::from_token(end),
                     cell_score,
                     storage_level,
-                    size,
+                    CellUnion(
+                        cells
+                            .into_iter()
+                            .map(|token| CellID::from_token(&token))
+                            .collect(),
+                    ),
                 ))
             }
 
@@ -294,10 +288,8 @@ impl<'de> Deserialize<'de> for Geoshard {
             {
                 let mut name = None;
                 let mut storage_level = None;
-                let mut start = None;
-                let mut end = None;
+                let mut cells = None;
                 let mut cell_score = None;
-                let mut size = None;
                 while let Some(key) = map.next_key()? {
                     match key {
                         Field::Name => {
@@ -312,17 +304,17 @@ impl<'de> Deserialize<'de> for Geoshard {
                             }
                             storage_level = Some(map.next_value()?);
                         }
-                        Field::Start => {
-                            if start.is_some() {
+                        Field::Cells => {
+                            if cells.is_some() {
                                 return Err(serde::de::Error::duplicate_field("start"));
                             }
-                            start = Some(CellID::from_token(map.next_value()?));
-                        }
-                        Field::End => {
-                            if end.is_some() {
-                                return Err(serde::de::Error::duplicate_field("end"));
-                            }
-                            end = Some(CellID::from_token(map.next_value()?));
+                            let cell_collection: Vec<String> = map.next_value()?;
+                            cells = Some(
+                                cell_collection
+                                    .into_iter()
+                                    .map(|token| CellID::from_token(&token))
+                                    .collect(),
+                            );
                         }
                         Field::CellScore => {
                             if cell_score.is_some() {
@@ -330,29 +322,19 @@ impl<'de> Deserialize<'de> for Geoshard {
                             }
                             cell_score = Some(map.next_value()?);
                         }
-                        Field::Size => {
-                            if size.is_some() {
-                                return Err(serde::de::Error::duplicate_field("size"));
-                            }
-                            size = Some(map.next_value()?);
-                        }
                     }
                 }
                 let name = name.ok_or_else(|| serde::de::Error::missing_field("name"))?;
-                let start = start.ok_or_else(|| serde::de::Error::missing_field("start"))?;
-                let end = end.ok_or_else(|| serde::de::Error::missing_field("end"))?;
+                let cells = cells.ok_or_else(|| serde::de::Error::missing_field("cells"))?;
                 let cell_score =
                     cell_score.ok_or_else(|| serde::de::Error::missing_field("cell_score"))?;
                 let storage_level = storage_level
                     .ok_or_else(|| serde::de::Error::missing_field("storage_level"))?;
-                let size = size.ok_or_else(|| serde::de::Error::missing_field("size"))?;
                 Ok(Geoshard::new(
                     name,
-                    start,
-                    end,
                     cell_score,
                     storage_level,
-                    size,
+                    CellUnion(cells),
                 ))
             }
         }
@@ -365,19 +347,8 @@ impl<'de> Deserialize<'de> for Geoshard {
 
 impl Geoshard {
     /// returns a new geoshard
-    pub fn new(
-        name: String,
-        start: CellID,
-        end: CellID,
-        cell_score: i32,
-        storage_level: u64,
-        size: usize,
-    ) -> Self {
-        let cell_union = CellUnion::from_range(start, end);
+    pub fn new(name: String, cell_score: i32, storage_level: u64, cell_union: CellUnion) -> Self {
         Self {
-            size,
-            start,
-            end,
             name,
             storage_level,
             cell_score,
@@ -392,17 +363,17 @@ impl Geoshard {
 
     /// cell_count returns the cell_count for this geoshard
     pub fn cell_count(&self) -> usize {
-        self.size
+        self.cell_union.0.len()
     }
 
     /// returns the starting cell
     pub fn start(&self) -> &CellID {
-        &self.start
+        &self.cell_union.0[0]
     }
 
     /// returns the end cell
     pub fn end(&self) -> &CellID {
-        &self.end
+        &self.cell_union.0.last().unwrap()
     }
 
     /// Returns a cell union from this shard
@@ -452,43 +423,40 @@ impl GeoshardCollection {
         scored_cells: &BTreeMap<CellID, i32>,
         storage_level: u64,
     ) -> Self {
-        let mut current_start = scored_cells.iter().next().unwrap().0;
-        let mut current_end = scored_cells.iter().next().unwrap().0;
         let mut current_cell_count = 0;
         let mut current_score = 0;
+        let mut cells = vec![];
 
         let mut shards = Vec::new();
         let mut geoshard_count = 1;
 
-        for (cell_id, cell_score) in scored_cells {
+        for (cell_id, cell_score) in scored_cells.iter() {
             if cell_score + current_score > container_size {
                 let shard = Geoshard::new(
                     format!("geoshard_user_index_{}", geoshard_count),
-                    *current_start,
-                    *current_end,
                     current_score,
                     cell_id.level(),
-                    current_cell_count,
+                    CellUnion(cells),
                 );
+
+                assert_eq!(shard.cell_union().0.len(), current_cell_count);
+                cells = vec![];
                 shards.push(shard);
-                current_start = cell_id;
                 current_cell_count = 0;
                 current_score = 0;
                 geoshard_count += 1;
             }
-            current_end = cell_id;
+            cells.push(*cell_id);
             current_cell_count += 1;
             current_score += cell_score;
         }
 
-        if geoshard_count != shards.len() {
+        if cells.len() != 0 {
             let shard = Geoshard::new(
                 format!("geoshard_user_index_{}", geoshard_count),
-                *current_start,
-                *current_end,
                 current_score,
                 storage_level,
-                current_cell_count,
+                CellUnion(cells),
             );
 
             shards.push(shard);
@@ -769,14 +737,7 @@ pub mod test {
 
     macro_rules! shard {
         ($cell_score:expr) => {
-            Geoshard::new(
-                "fake-shard".to_owned(),
-                CellID::from_token("00001"),
-                CellID::from_token("00003"),
-                $cell_score,
-                0,
-                2,
-            )
+            Geoshard::new("fake-shard".to_owned(), $cell_score, 0, CellUnion(vec![]));
         };
     }
 
